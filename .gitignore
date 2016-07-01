@@ -1,2 +1,10 @@
 
 /data/
+.DS_Store
+.idea/SNU-project.iml
+.idea/inspectionProfiles/
+.idea/misc.xml
+.idea/modules.xml
+.idea/workspace.xml
+source/__pycache__/
+spark-1.5.1-bin-hadoop2.6/
