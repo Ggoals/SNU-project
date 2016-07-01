@@ -6,7 +6,7 @@ from Common import *
 import sys
 try:
     from pyspark.conf import SparkConf
-    from pyspark.mllib.classification import LogisticRegressionWithLBFGS, LogisticRegressionModel
+    from pyspark.mllib.classification import LogisticRegressionWithLBFGS, LogisticRegressionModel, LogisticRegressionWithSGD
     from pyspark.mllib.regression import LabeledPoint
     import pyspark
     print ("Successfully imported Spark Modules")
@@ -31,9 +31,9 @@ def main(input_file_path):
     parsed_data = rdd_to_labeled_point(traning_data_df.rdd)
     parsed_data.persist()
     # Correct print: [LabeledPoint(1.0, [1.0,8.6662186586,6.98047693487])]
-    logisticRegressionWithLBFGS = LogisticRegressionWithLBFGS.train(parsed_data, iterations=500)
+    logisticRegressionWithSGD = LogisticRegressionWithSGD.train(parsed_data, iterations=100)
 
-    labels_and_preds = parsed_data.map(lambda lp: [lp.label, logisticRegressionWithLBFGS.predict(lp.features)])
+    labels_and_preds = parsed_data.map(lambda lp: [lp.label, logisticRegressionWithSGD.predict(lp.features)])
     Accuracy = labels_and_preds.filter(lambda ele: int(ele[0]) == int(ele[1])).count() / float(parsed_data.count())
     print("Training Accuracy on training data = " + str(Accuracy))
 
@@ -46,7 +46,7 @@ def main(input_file_path):
                 encoding='utf-8')
     file.write('INDEX,GENDER\n')
     for data in unseen_parsed_data.collect():
-        file.write(str(data[0]) + ',' + str(logisticRegressionWithLBFGS.predict(data[1]) + 1) + '\n')
+        file.write(str(data[0]) + ',' + str(logisticRegressionWithSGD.predict(data[1]) + 1) + '\n')
     # print(labels_and_preds.collect())
 
 

@@ -1,13 +1,17 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 from math import log, log10
+
 from Common import *
 
 import sys
 try:
     from pyspark.conf import SparkConf
-    from pyspark.mllib.classification import LogisticRegressionWithLBFGS, LogisticRegressionModel
+    from pyspark.mllib.classification import NaiveBayes
     from pyspark.mllib.regression import LabeledPoint
+    from pyspark.mllib.classification import SVMWithSGD
+    from pyspark.ml.feature import Normalizer
+    from pyspark.sql import SQLContext, Row
     import pyspark
     print ("Successfully imported Spark Modules")
 
@@ -20,6 +24,7 @@ def main(input_file_path):
 
     print('=====>>>>>')
     print('ddd')
+    # sc = pyspark.SparkContext()
     data = sc.textFile(input_file_path)
     traning_data_RDD = data.filter(lambda line: line.split(',')[3] != '' and line.split(',')[0] != 'INDEX')
     unseen_data_RDD = data.filter(lambda line: line.split(',')[3] == '')
@@ -31,9 +36,9 @@ def main(input_file_path):
     parsed_data = rdd_to_labeled_point(traning_data_df.rdd)
     parsed_data.persist()
     # Correct print: [LabeledPoint(1.0, [1.0,8.6662186586,6.98047693487])]
-    logisticRegressionWithLBFGS = LogisticRegressionWithLBFGS.train(parsed_data, iterations=500)
+    naiveBayesModel = NaiveBayes.train(parsed_data)
 
-    labels_and_preds = parsed_data.map(lambda lp: [lp.label, logisticRegressionWithLBFGS.predict(lp.features)])
+    labels_and_preds = parsed_data.map(lambda lp: [lp.label, naiveBayesModel.predict(lp.features)])
     Accuracy = labels_and_preds.filter(lambda ele: int(ele[0]) == int(ele[1])).count() / float(parsed_data.count())
     print("Training Accuracy on training data = " + str(Accuracy))
 
@@ -42,12 +47,12 @@ def main(input_file_path):
     unseen_parsed_data = rdd_to_index_featurs(unseen_data_df.rdd)
     unseen_parsed_data.persist()
 
-    file = open('/Users/1002720/Documents/workspace/SNU-project/data/BDA2Project/1-GenderPrediction/result.csv', 'w',
-                encoding='utf-8')
+    file = open('/Users/1002720/Documents/workspace/SNU-project/data/BDA2Project/1-GenderPrediction/result.csv', 'w', encoding='utf-8')
     file.write('INDEX,GENDER\n')
     for data in unseen_parsed_data.collect():
-        file.write(str(data[0]) + ',' + str(logisticRegressionWithLBFGS.predict(data[1]) + 1) + '\n')
+        file.write(str(data[0])+','+str(naiveBayesModel.predict(data[1]) + 1)+'\n')
     # print(labels_and_preds.collect())
+
 
 
 
