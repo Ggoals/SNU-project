@@ -147,13 +147,6 @@ def create_pddf(csv_data):
 
     data = pd.DataFrame(rows.collect(), columns=column_names)
 
-    # if data['GENDER'] == '':
-    #     data['GENDER'] = data['GENDER'].astype('double').astype('int')
-    # else:
-    #     print('========================>>>>>>>>>>>>>>>>>>>>>>>>>')
-    #     print('hi')
-    #     # print(data['GENDER'])
-
     data['DATE'] = pd.to_datetime(data['DATE'], format='%Y%m%d')
     data['DAY'] = data['DATE'].dt.weekday
     data['DAY'] = data['DAY'].astype('category')
@@ -161,8 +154,8 @@ def create_pddf(csv_data):
 
     data['GENRE'] = data['GENRE'].astype('double')
     data['GENRE1'] = (data['GENRE'] / 100000000).astype('int64')
-    # data['GENRE2'] = ((data['GENRE'] - data['GENRE1'] * 100000000) / 100000).astype('int64')
-    # data['GENRE3'] = ((data['GENRE'] - data['GENRE1'] * 100000000 - data['GENRE2'] * 100000) / 100).astype('int64')
+    data['GENRE2'] = ((data['GENRE'] - data['GENRE1'] * 100000000) / 100000).astype('int64')
+    data['GENRE3'] = ((data['GENRE'] - data['GENRE1'] * 100000000 - data['GENRE2'] * 100000) / 100).astype('int64')
     data.drop('GENRE', axis=1, inplace=True)
 
     #data.set_index('INDEX', inplace=True)
@@ -175,9 +168,9 @@ def create_pddf(csv_data):
     data['VIEWTIME'] = data['VIEWTIME'].astype('double').astype('int64')
     data['GENDER'] = data['GENDER'].astype('category')
     data['GENRE1'] = data['GENRE1'].astype('category')
-    # data['GENRE2'] = data['GENRE2'].astype('category')
-    # data['GENRE3'] = data['GENRE3'].astype('category')
-    data['INCOME'] = data['GENRE1'].astype('category')
+    data['GENRE2'] = data['GENRE2'].astype('category')
+    data['GENRE3'] = data['GENRE3'].astype('category')
+    data['INCOME'] = data['INCOME'].astype('category')
 
     data.drop('PROG_CODE', axis=1, inplace=True)
     data.drop('PROG_START', axis=1, inplace=True)
@@ -190,12 +183,10 @@ def create_pddf(csv_data):
 
     data['VIEWTIME'] = pd.cut(data['VIEWTIME'], 24)
 
-    data.drop('VIEWTIME', axis=1, inplace=True)
-    data.drop('REGION', axis=1, inplace=True)
-    data.drop('EDUCATION', axis=1, inplace=True)
-    data.drop('DAY', axis=1, inplace=True)
-    # 'VIEWTIME', 'REGION', 'OCCUPATION', 'EDUCATION', 'INCOME', 'DAY', 'GENRE2', 'GENRE3'
-    categorical_cols = ['OCCUPATION', 'INCOME', 'GENRE1', 'PROGRAM_TYPE']
+    # data.drop('VIEWTIME', axis=1, inplace=True)
+    # data.drop('EDUCATION', axis=1, inplace=True)
+    # 'EDUCATION',
+    categorical_cols = ['VIEWTIME', 'EDUCATION', 'DAY', 'OCCUPATION', 'INCOME', 'GENRE1', 'GENRE2', 'GENRE3', 'PROGRAM_TYPE', 'REGION']
     for cc in categorical_cols:
         dummies = pd.get_dummies(data[cc])
         dummies = dummies.add_prefix("{}#".format(cc))
