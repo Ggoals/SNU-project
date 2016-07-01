@@ -1,8 +1,13 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-from math import log, log10
+
+
+
 
 import sys
+import numpy as np
+import pandas as pd
+
 try:
     from pyspark.conf import SparkConf
     from pyspark.mllib.classification import LogisticRegressionWithLBFGS, LogisticRegressionModel
@@ -11,6 +16,8 @@ try:
     from pyspark.mllib.feature import Normalizer
     from pyspark.mllib.linalg import Vectors
     from pyspark.sql import SQLContext, Row
+
+
     import pyspark
     print ("Successfully imported Spark Modules")
 
@@ -41,14 +48,19 @@ def getFeature(v):
         GENRE,  -- 15
         PROGRAM_TYPE"""
 
-    features = []
-    features.append(v[4])
 
+    features = []
+    features.append(v[2])
+    features.append(v[5])
     features.append(v[7])
+    features.append(v[15])
+    features.append(v[15])
+    features.append(v[15])
+
     features.append(v[8])
     features.append(int(v[10]) - int(v[9]))
     features.append(v[11])
-    features.append(v[15])
+
     features.append(v[16])
     return features
 
@@ -95,59 +107,99 @@ def parsePoint(line):
     # return v
 
 
+def rdd_to_labeled_point(rdd):
+    print('<><><><><>>><<><><><><><')
+    print(list(rdd.take(1))[0])
+    labeled_rdd = rdd.map(lambda v: LabeledPoint(int(list(v)[1]) - 1, [1] + list(v)[2:]))
+    return labeled_rdd
 
-# def toNomalizeRDD(data_arr, argv):
-#     print('>>make normalization...')
-#     normalizer2 = Normalizer(p=1.0)
-#
-#     for index in argv:
-#         values = list(map(lambda data: data[index], data_arr))
-#         v = Vectors.dense(values)
-#         print(normalizer2.transform(v).collect().distinct())
-#
-#     print('>>end normalization...')
-#     return None
-#
-# def createDF(data):
-#     data = data.split(',')
-#     column_names=[
-#         "INDEX",
-#         "DATE",
-#         "REGION",
-#         "GENDER",
-#         "AGE",
-#         "OCCUPATION",
-#         "EDUCATION",
-#         "INCOME",
-#         "CHANNEL",
-#         "CHANNEL_START",
-#         "CHANNEL_END",
-#         "VIEWTIME",
-#         "PROG_CODE",
-#         "PROG_START",
-#         "PROG_END",
-#         "GENRE",
-#         "PROGRAM_TYPE"
-#     ]
-#     df = sqlContext.createDataFrame([(Vectors.dense(data))], column_names)
-#     # row = Row(
-#     #     INDEX=data[0],
-#     #     DATE=data[1],
-#     #     REGION=data[2],
-#     #     GENDER=data[3],
-#     #     AGE=data[4],
-#     #     OCCUPATION=data[5],
-#     #     EDUCATION=data[6],
-#     #     INCOME=data[7],
-#     #     CHANNEL=data[8],
-#     #     CHANNEL_START=data[9],
-#     #     CHANNEL_END=data[10],
-#     #     VIEWTIME=data[11],
-#     #     PROG_CODE=data[12],
-#     #     PROG_START=data[13],
-#     #     PROG_END=data[14],
-#     #     GENRE=data[15],
-#     #     PROGRAM_TYPE=data[16]
-#     # )
-#
-#     return df
+
+def rdd_to_index_featurs(rdd):
+    print('<><><><><>>><<><><><><><')
+    print(list(rdd.take(1))[0])
+    labeled_rdd = rdd.map(lambda v: [list(v)[0], [1] + list(v)[2:]])
+    return labeled_rdd
+
+
+
+def create_pddf(csv_data):
+    vectors_rdd = csv_data.map(lambda l: l.split(","))
+    rows = vectors_rdd.map(lambda data: data)
+    column_names = [
+        "INDEX",
+        "DATE",
+        "REGION",
+        "GENDER",
+        "AGE",
+        "OCCUPATION",
+        "EDUCATION",
+        "INCOME",
+        "CHANNEL",
+        "CHANNEL_START",
+        "CHANNEL_END",
+        "VIEWTIME",
+        "PROG_CODE",
+        "PROG_START",
+        "PROG_END",
+        "GENRE",
+        "PROGRAM_TYPE"
+    ]
+
+    data = pd.DataFrame(rows.collect(), columns=column_names)
+
+    # if data['GENDER'] == '':
+    #     data['GENDER'] = data['GENDER'].astype('double').astype('int')
+    # else:
+    #     print('========================>>>>>>>>>>>>>>>>>>>>>>>>>')
+    #     print('hi')
+    #     # print(data['GENDER'])
+
+    data['DATE'] = pd.to_datetime(data['DATE'], format='%Y%m%d')
+    data['DAY'] = data['DATE'].dt.weekday
+    data['DAY'] = data['DAY'].astype('category')
+    data.drop('DATE', axis=1, inplace=True)
+
+    data['GENRE'] = data['GENRE'].astype('double')
+    data['GENRE1'] = (data['GENRE'] / 100000000).astype('int64')
+    # data['GENRE2'] = ((data['GENRE'] - data['GENRE1'] * 100000000) / 100000).astype('int64')
+    # data['GENRE3'] = ((data['GENRE'] - data['GENRE1'] * 100000000 - data['GENRE2'] * 100000) / 100).astype('int64')
+    data.drop('GENRE', axis=1, inplace=True)
+
+    #data.set_index('INDEX', inplace=True)
+
+    data['PROG_CODE'] = data['PROG_CODE'].astype('category')
+    data['PROGRAM_TYPE'] = data['PROGRAM_TYPE'].astype('category')
+    data['REGION'] = data['REGION'].astype('category')
+    data['OCCUPATION'] = data['OCCUPATION'].astype('category')
+    data['EDUCATION'] = data['EDUCATION'].astype('category')
+    data['VIEWTIME'] = data['VIEWTIME'].astype('double').astype('int64')
+    data['GENDER'] = data['GENDER'].astype('category')
+    data['GENRE1'] = data['GENRE1'].astype('category')
+    # data['GENRE2'] = data['GENRE2'].astype('category')
+    # data['GENRE3'] = data['GENRE3'].astype('category')
+    data['INCOME'] = data['GENRE1'].astype('category')
+
+    data.drop('PROG_CODE', axis=1, inplace=True)
+    data.drop('PROG_START', axis=1, inplace=True)
+    data.drop('PROG_END', axis=1, inplace=True)
+    data.drop('CHANNEL', axis=1, inplace=True)
+    data.drop('CHANNEL_START', axis=1, inplace=True)
+    data.drop('CHANNEL_END', axis=1, inplace=True)
+
+    data['AGE'] = data['AGE'].astype('double').astype('int64')
+
+    data['VIEWTIME'] = pd.cut(data['VIEWTIME'], 24)
+
+    data.drop('VIEWTIME', axis=1, inplace=True)
+    data.drop('REGION', axis=1, inplace=True)
+    data.drop('EDUCATION', axis=1, inplace=True)
+    data.drop('DAY', axis=1, inplace=True)
+    # 'VIEWTIME', 'REGION', 'OCCUPATION', 'EDUCATION', 'INCOME', 'DAY', 'GENRE2', 'GENRE3'
+    categorical_cols = ['OCCUPATION', 'INCOME', 'GENRE1', 'PROGRAM_TYPE']
+    for cc in categorical_cols:
+        dummies = pd.get_dummies(data[cc])
+        dummies = dummies.add_prefix("{}#".format(cc))
+        data.drop(cc, axis=1, inplace=True)
+        data = data.join(dummies)
+
+    return data
